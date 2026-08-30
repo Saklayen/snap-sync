@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../core/designsystem/components/app_button.dart';
 import '../../../core/designsystem/theme/app_colors.dart';
 import '../../../core/ui/effect_listener.dart';
 import '../../../app/locator.dart';
@@ -726,23 +727,10 @@ class _UploadBatchButton extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: FilledButton.icon(
+      child: AppButton(
+        label: label,
+        icon: Icons.cloud_upload_outlined,
         onPressed: onPressed,
-        icon: const Icon(Icons.cloud_upload_outlined, size: 20),
-        label: Text(
-          label,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: white,
-                letterSpacing: 1.1,
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-        style: FilledButton.styleFrom(
-          backgroundColor: blue500,
-          foregroundColor: white,
-          minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
       ),
     );
   }
@@ -872,13 +860,6 @@ class _RecoveryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isVisible) return const SizedBox.shrink();
 
-    return FilledButton(
-      onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(52),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-      child: Text(label),
-    );
+    return AppButton(label: label, onPressed: onPressed);
   }
 }

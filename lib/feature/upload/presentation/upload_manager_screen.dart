@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/locator.dart';
-import '../../../core/designsystem/theme/app_colors.dart';
+import '../../../core/designsystem/components/app_button.dart';
 import '../../../core/designsystem/theme/app_status_colors.dart';
 import 'upload_bloc.dart';
 import 'upload_state.dart';
@@ -301,20 +301,9 @@ class _NewBatchButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-      child: FilledButton(
+      child: AppButton(
+        label: 'START NEW UPLOAD BATCH',
         onPressed: () => Navigator.of(context).pop(),
-        style: FilledButton.styleFrom(
-          backgroundColor: blue500,
-          minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
-        child: Text(
-          'START NEW UPLOAD BATCH',
-          style: Theme.of(context)
-              .textTheme
-              .labelLarge
-              ?.copyWith(color: white, letterSpacing: 1.2, fontWeight: FontWeight.w700),
-        ),
       ),
     );
   }
