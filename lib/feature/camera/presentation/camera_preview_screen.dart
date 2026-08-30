@@ -112,6 +112,9 @@ class _CameraViewState extends State<_CameraView> with WidgetsBindingObserver {
                     context.read<CameraBloc>().add(const CameraCaptureRequested()),
                 onUploadPressed: () =>
                     context.read<CameraBloc>().add(const CameraBatchSubmitted()),
+                onQueuePressed: () => context
+                    .read<CameraBloc>()
+                    .add(const CameraUploadManagerRequested()),
               ),
             CameraStatus.starting => const _Starting(),
             _ => _Unavailable(
@@ -163,6 +166,7 @@ class _CameraSurface extends StatelessWidget {
     required this.uploadLabel,
     required this.onCapturePressed,
     required this.onUploadPressed,
+    required this.onQueuePressed,
   });
 
   final CameraController controller;
@@ -189,6 +193,7 @@ class _CameraSurface extends StatelessWidget {
   final String uploadLabel;
   final VoidCallback onCapturePressed;
   final VoidCallback onUploadPressed;
+  final VoidCallback onQueuePressed;
 
   @override
   Widget build(BuildContext context) {
@@ -209,6 +214,15 @@ class _CameraSurface extends StatelessWidget {
               focusPoint.dy * constraints.maxHeight,
             ),
             isVisible: isFocusLocked,
+          ),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: _QueueButton(onPressed: onQueuePressed),
+              ),
+            ),
           ),
           Align(
             alignment: Alignment.centerRight,
@@ -731,6 +745,28 @@ class _UploadBatchButton extends StatelessWidget {
         label: label,
         icon: Icons.cloud_upload_outlined,
         onPressed: onPressed,
+      ),
+    );
+  }
+}
+
+class _QueueButton extends StatelessWidget {
+  const _QueueButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: overlayStrong,
+        ),
+        child: const Icon(Icons.cloud_sync_outlined, size: 22, color: white),
       ),
     );
   }

@@ -76,3 +76,7 @@ final class CameraFlipped extends CameraEvent {
 final class CameraBatchSubmitted extends CameraEvent {
   const CameraBatchSubmitted();
 }
+
+final class CameraUploadManagerRequested extends CameraEvent {
+  const CameraUploadManagerRequested();
+}

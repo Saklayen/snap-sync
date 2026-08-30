@@ -31,6 +31,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
     on<CameraLensSelected>(_onLensSelected);
     on<CameraFlipped>(_onFlipped);
     on<CameraBatchSubmitted>(_onBatchSubmitted);
+    on<CameraUploadManagerRequested>(_onUploadManagerRequested);
 
     _batchSubscription = _queue.watchCurrentBatch().listen(
           (items) => add(CameraBatchChanged([for (final item in items) item.filePath])),
@@ -133,6 +134,13 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
       captureBadgeLabel: _captureBadgeLabelFor(event.paths.length),
       uploadLabel: _uploadLabelFor(event.paths.length),
     ));
+  }
+
+  void _onUploadManagerRequested(
+    CameraUploadManagerRequested event,
+    Emitter<CameraState> emit,
+  ) {
+    emitEffect(const OpenUploadManagerEffect());
   }
 
   Future<void> _onBatchSubmitted(
