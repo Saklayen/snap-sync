@@ -7,8 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/designsystem/theme/app_colors.dart';
 import '../../../core/ui/effect_listener.dart';
-import '../data/camera_data_source.dart';
-import '../data/capture_storage.dart';
+import '../../../app/locator.dart';
 import 'camera_bloc.dart';
 import 'camera_effect.dart';
 import 'camera_event.dart';
@@ -20,7 +19,7 @@ class CameraScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => CameraBloc(CameraDataSource(CaptureStorage()))..add(const CameraStarted()),
+      create: (_) => CameraBloc(locator(), locator())..add(const CameraStarted()),
       child: const _CameraView(),
     );
   }

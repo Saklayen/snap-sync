@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/domain/app_error.dart';
 import '../../../core/domain/result.dart';
 import '../../../core/ui/effect_emitter.dart';
 import '../../../core/ui/error_to_text.dart';
+import '../../../core/data/database/upload_queue_dao.dart';
 import '../data/camera_data_source.dart';
 import '../data/camera_session.dart';
 import 'camera_effect.dart';
@@ -13,7 +16,7 @@ import 'camera_state.dart';
 const _zoomStops = [0.5, 1.0, 2.0, 5.0];
 
 class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<CameraEffect> {
-  CameraBloc(this._dataSource) : super(const CameraState()) {
+  CameraBloc(this._dataSource, this._queue) : super(const CameraState()) {
     on<CameraStarted>(_onStarted);
     on<CameraResumed>(_onResumed);
     on<CameraStopped>(_onStopped);
@@ -22,22 +25,29 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
     on<CameraFocusRequested>(_onFocusRequested);
     on<CameraFocusReleased>(_onFocusReleased);
     on<CameraCaptureRequested>(_onCaptureRequested);
+    on<CameraBatchChanged>(_onBatchChanged);
+
+    _batchSubscription = _queue.watchCurrentBatch().listen(
+          (items) => add(CameraBatchChanged([for (final item in items) item.filePath])),
+        );
   }
 
   final CameraDataSource _dataSource;
+  final UploadQueueDao _queue;
+  late final StreamSubscription<void> _batchSubscription;
 
   Future<void> _onStarted(CameraStarted event, Emitter<CameraState> emit) async {
-    emit(_keepCaptures(const CameraState(status: CameraStatus.starting)));
-    emit(_keepCaptures(_stateFor(await _dataSource.start())));
+    emit(const CameraState(status: CameraStatus.starting));
+    emit(_stateFor(await _dataSource.start()));
   }
 
   Future<void> _onResumed(CameraResumed event, Emitter<CameraState> emit) async {
-    emit(_keepCaptures(_stateFor(await _dataSource.start(requestPermission: false))));
+    emit(_stateFor(await _dataSource.start(requestPermission: false)));
   }
 
   Future<void> _onStopped(CameraStopped event, Emitter<CameraState> emit) async {
     await _dataSource.stop();
-    emit(_keepCaptures(const CameraState()));
+    emit(const CameraState());
   }
 
   Future<void> _onRecoveryRequested(
@@ -90,22 +100,20 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
 
     switch (result) {
       case Success(:final data):
-        final paths = [...state.capturePaths, data];
-        emit(state.copyWith(
-          capturePaths: paths,
-          isCapturing: false,
-          captureBadgeLabel: _captureBadgeLabelFor(paths.length),
-        ));
+        await _queue.enqueue(data);
+        emit(state.copyWith(isCapturing: false));
       case Failure(:final error):
         emit(state.copyWith(isCapturing: false));
         emitEffect(ShowMessageEffect(messageFor(error)));
     }
   }
 
-  CameraState _keepCaptures(CameraState next) => next.copyWith(
-        capturePaths: state.capturePaths,
-        captureBadgeLabel: state.captureBadgeLabel,
-      );
+  void _onBatchChanged(CameraBatchChanged event, Emitter<CameraState> emit) {
+    emit(state.copyWith(
+      capturePaths: event.paths,
+      captureBadgeLabel: _captureBadgeLabelFor(event.paths.length),
+    ));
+  }
 
   CameraState _stateFor(Result<CameraSession> result) => switch (result) {
         Success(:final data) => _readyState(data),
@@ -134,6 +142,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
 
   @override
   Future<void> close() async {
+    await _batchSubscription.cancel();
     await _dataSource.stop();
     await closeEffects();
     return super.close();

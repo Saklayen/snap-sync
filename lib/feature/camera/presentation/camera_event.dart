@@ -50,3 +50,12 @@ final class CameraFocusReleased extends CameraEvent {
 final class CameraCaptureRequested extends CameraEvent {
   const CameraCaptureRequested();
 }
+
+final class CameraBatchChanged extends CameraEvent {
+  const CameraBatchChanged(this.paths);
+
+  final List<String> paths;
+
+  @override
+  List<Object?> get props => [paths];
+}
