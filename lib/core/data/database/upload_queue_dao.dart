@@ -106,7 +106,7 @@ class UploadQueueDao {
     return _watch(
       'SELECT * FROM upload_items '
       'WHERE batch_id < (SELECT current_batch_id FROM queue_settings WHERE id = $_settingsId) '
-      'ORDER BY id',
+      'ORDER BY batch_id DESC, id ASC',
     );
   }
 

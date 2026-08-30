@@ -69,16 +69,20 @@ class UploadManagerBloc extends Bloc<UploadManagerEvent, UploadManagerState> {
 }
 
 List<UploadRowUi> _rowsFor(List<UploadItem> items) {
-  var headTaken = false;
+  final headId = _headIdFor(items);
 
-  return [
-    for (final item in items)
-      () {
-        final isHead = item.state == UploadState.pending && !headTaken;
-        if (isHead) headTaken = true;
-        return _rowFor(item, isHead: isHead);
-      }(),
-  ];
+  return [for (final item in items) _rowFor(item, isHead: item.id == headId)];
+}
+
+int? _headIdFor(List<UploadItem> items) {
+  int? head;
+
+  for (final item in items) {
+    if (item.state != UploadState.pending) continue;
+    if (head == null || item.id < head) head = item.id;
+  }
+
+  return head;
 }
 
 UploadRowUi _rowFor(UploadItem item, {required bool isHead}) {
