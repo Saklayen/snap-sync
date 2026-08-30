@@ -16,6 +16,16 @@ subprojects {
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 subprojects {
+    afterEvaluate {
+        extensions.findByName("android")?.let { android ->
+            android.javaClass.methods
+                .firstOrNull { it.name == "setNdkVersion" && it.parameterCount == 1 }
+                ?.invoke(android, "27.0.12077973")
+        }
+    }
+}
+
+subprojects {
     project.evaluationDependsOn(":app")
 }
 

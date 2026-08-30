@@ -21,22 +21,23 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
     on<CameraZoomChanged>(_onZoomChanged);
     on<CameraFocusRequested>(_onFocusRequested);
     on<CameraFocusReleased>(_onFocusReleased);
+    on<CameraCaptureRequested>(_onCaptureRequested);
   }
 
   final CameraDataSource _dataSource;
 
   Future<void> _onStarted(CameraStarted event, Emitter<CameraState> emit) async {
-    emit(const CameraState(status: CameraStatus.starting));
-    emit(_stateFor(await _dataSource.start()));
+    emit(_keepCaptures(const CameraState(status: CameraStatus.starting)));
+    emit(_keepCaptures(_stateFor(await _dataSource.start())));
   }
 
   Future<void> _onResumed(CameraResumed event, Emitter<CameraState> emit) async {
-    emit(_stateFor(await _dataSource.start(requestPermission: false)));
+    emit(_keepCaptures(_stateFor(await _dataSource.start(requestPermission: false))));
   }
 
   Future<void> _onStopped(CameraStopped event, Emitter<CameraState> emit) async {
     await _dataSource.stop();
-    emit(const CameraState());
+    emit(_keepCaptures(const CameraState()));
   }
 
   Future<void> _onRecoveryRequested(
@@ -78,6 +79,33 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
 
     await _dataSource.releaseFocus();
   }
+
+  Future<void> _onCaptureRequested(
+    CameraCaptureRequested event,
+    Emitter<CameraState> emit,
+  ) async {
+    emit(state.copyWith(isCapturing: true));
+
+    final result = await _dataSource.capture();
+
+    switch (result) {
+      case Success(:final data):
+        final paths = [...state.capturePaths, data];
+        emit(state.copyWith(
+          capturePaths: paths,
+          isCapturing: false,
+          captureBadgeLabel: _captureBadgeLabelFor(paths.length),
+        ));
+      case Failure(:final error):
+        emit(state.copyWith(isCapturing: false));
+        emitEffect(ShowMessageEffect(messageFor(error)));
+    }
+  }
+
+  CameraState _keepCaptures(CameraState next) => next.copyWith(
+        capturePaths: state.capturePaths,
+        captureBadgeLabel: state.captureBadgeLabel,
+      );
 
   CameraState _stateFor(Result<CameraSession> result) => switch (result) {
         Success(:final data) => _readyState(data),
@@ -127,6 +155,8 @@ List<ZoomOption> _zoomOptionsFor(double zoom, double minZoom, double maxZoom) {
       ),
   ];
 }
+
+String _captureBadgeLabelFor(int count) => '$count';
 
 String _stopLabelFor(double stop) =>
     stop == stop.roundToDouble() ? '${stop.toInt()}x' : '${stop}x';

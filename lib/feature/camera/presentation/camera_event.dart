@@ -46,3 +46,7 @@ final class CameraFocusRequested extends CameraEvent {
 final class CameraFocusReleased extends CameraEvent {
   const CameraFocusReleased();
 }
+
+final class CameraCaptureRequested extends CameraEvent {
+  const CameraCaptureRequested();
+}

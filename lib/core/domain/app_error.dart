@@ -7,6 +7,7 @@ enum CameraError implements AppError {
   permissionPermanentlyDenied,
   noCameraAvailable,
   hardwareFailure,
+  captureFailed,
 }
 
 enum NetworkError implements AppError {

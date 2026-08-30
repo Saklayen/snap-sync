@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../../core/designsystem/theme/app_colors.dart';
 import '../../../core/ui/effect_listener.dart';
 import '../data/camera_data_source.dart';
+import '../data/capture_storage.dart';
 import 'camera_bloc.dart';
 import 'camera_effect.dart';
 import 'camera_event.dart';
@@ -17,7 +20,7 @@ class CameraScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => CameraBloc(CameraDataSource())..add(const CameraStarted()),
+      create: (_) => CameraBloc(CameraDataSource(CaptureStorage()))..add(const CameraStarted()),
       child: const _CameraView(),
     );
   }
@@ -65,6 +68,8 @@ class _CameraViewState extends State<_CameraView> with WidgetsBindingObserver {
       effects: context.read<CameraBloc>().effects,
       onEffect: (context, effect) => switch (effect) {
         OpenAppSettingsEffect() => openAppSettings(),
+        ShowMessageEffect(:final message) => ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message))),
       },
       child: Scaffold(
         body: BlocBuilder<CameraBloc, CameraState>(
@@ -86,6 +91,12 @@ class _CameraViewState extends State<_CameraView> with WidgetsBindingObserver {
                     context.read<CameraBloc>().add(CameraFocusRequested(point)),
                 onFocusReleased: () =>
                     context.read<CameraBloc>().add(const CameraFocusReleased()),
+                latestCapturePath: state.latestCapturePath,
+                captureBadgeLabel: state.captureBadgeLabel,
+                hasCaptures: state.hasCaptures,
+                isCapturing: state.isCapturing,
+                onCapturePressed: () =>
+                    context.read<CameraBloc>().add(const CameraCaptureRequested()),
               ),
             CameraStatus.starting => const _Starting(),
             _ => _Unavailable(
@@ -126,6 +137,11 @@ class _CameraSurface extends StatelessWidget {
     required this.onZoomChanged,
     required this.onFocusRequested,
     required this.onFocusReleased,
+    required this.latestCapturePath,
+    required this.captureBadgeLabel,
+    required this.hasCaptures,
+    required this.isCapturing,
+    required this.onCapturePressed,
   });
 
   final CameraController controller;
@@ -141,6 +157,11 @@ class _CameraSurface extends StatelessWidget {
   final ValueChanged<double> onZoomChanged;
   final ValueChanged<Offset> onFocusRequested;
   final VoidCallback onFocusReleased;
+  final String latestCapturePath;
+  final String captureBadgeLabel;
+  final bool hasCaptures;
+  final bool isCapturing;
+  final VoidCallback onCapturePressed;
 
   @override
   Widget build(BuildContext context) {
@@ -190,6 +211,14 @@ class _CameraSurface extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 _ZoomPills(options: zoomOptions, onSelected: onZoomChanged),
+                const SizedBox(height: 28),
+                _ShutterRow(
+                  latestCapturePath: latestCapturePath,
+                  badgeLabel: captureBadgeLabel,
+                  hasCaptures: hasCaptures,
+                  isCapturing: isCapturing,
+                  onCapturePressed: onCapturePressed,
+                ),
               ],
             ),
           ),
@@ -443,6 +472,130 @@ class _ZoomBound extends StatelessWidget {
           .textTheme
           .labelSmall
           ?.copyWith(color: onOverlayMuted),
+    );
+  }
+}
+
+class _ShutterRow extends StatelessWidget {
+  const _ShutterRow({
+    required this.latestCapturePath,
+    required this.badgeLabel,
+    required this.hasCaptures,
+    required this.isCapturing,
+    required this.onCapturePressed,
+  });
+
+  static const double _sideSlot = 64;
+
+  final String latestCapturePath;
+  final String badgeLabel;
+  final bool hasCaptures;
+  final bool isCapturing;
+  final VoidCallback onCapturePressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          SizedBox(
+            width: _sideSlot,
+            child: _BatchThumbnail(
+              path: latestCapturePath,
+              badgeLabel: badgeLabel,
+              isVisible: hasCaptures,
+            ),
+          ),
+          _ShutterButton(isCapturing: isCapturing, onPressed: onCapturePressed),
+          const SizedBox(width: _sideSlot),
+        ],
+      ),
+    );
+  }
+}
+
+class _BatchThumbnail extends StatelessWidget {
+  const _BatchThumbnail({
+    required this.path,
+    required this.badgeLabel,
+    required this.isVisible,
+  });
+
+  final String path;
+  final String badgeLabel;
+  final bool isVisible;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isVisible) return const SizedBox.shrink();
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.file(
+            File(path),
+            key: ValueKey(path),
+            width: 56,
+            height: 56,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+          ),
+        ),
+        Positioned(
+          top: -6,
+          right: -6,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: blue500,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              badgeLabel,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: white, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ShutterButton extends StatelessWidget {
+  const _ShutterButton({required this.isCapturing, required this.onPressed});
+
+  final bool isCapturing;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 76,
+        height: 76,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: white, width: 3),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(5),
+          child: AnimatedScale(
+            scale: isCapturing ? 0.82 : 1,
+            duration: const Duration(milliseconds: 120),
+            child: const DecoratedBox(
+              decoration: BoxDecoration(shape: BoxShape.circle, color: white),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

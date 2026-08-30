@@ -37,6 +37,9 @@ class CameraState extends Equatable {
     this.zoomOptions = const [],
     this.focusPoint = Offset.zero,
     this.isFocusLocked = false,
+    this.capturePaths = const [],
+    this.isCapturing = false,
+    this.captureBadgeLabel = '',
   });
 
   final CameraStatus status;
@@ -52,12 +55,21 @@ class CameraState extends Equatable {
   final List<ZoomOption> zoomOptions;
   final Offset focusPoint;
   final bool isFocusLocked;
+  final List<String> capturePaths;
+  final bool isCapturing;
+  final String captureBadgeLabel;
 
   bool get isPreviewVisible => status == CameraStatus.ready && controller != null;
 
   bool get hasRecovery => recovery != CameraRecovery.none;
 
   bool get isZoomAdjustable => maxZoom > minZoom;
+
+  bool get hasCaptures => capturePaths.isNotEmpty;
+
+  int get captureCount => capturePaths.length;
+
+  String get latestCapturePath => capturePaths.isEmpty ? '' : capturePaths.last;
 
   CameraState copyWith({
     CameraStatus? status,
@@ -73,6 +85,9 @@ class CameraState extends Equatable {
     List<ZoomOption>? zoomOptions,
     Offset? focusPoint,
     bool? isFocusLocked,
+    List<String>? capturePaths,
+    bool? isCapturing,
+    String? captureBadgeLabel,
   }) {
     return CameraState(
       status: status ?? this.status,
@@ -88,6 +103,9 @@ class CameraState extends Equatable {
       zoomOptions: zoomOptions ?? this.zoomOptions,
       focusPoint: focusPoint ?? this.focusPoint,
       isFocusLocked: isFocusLocked ?? this.isFocusLocked,
+      capturePaths: capturePaths ?? this.capturePaths,
+      isCapturing: isCapturing ?? this.isCapturing,
+      captureBadgeLabel: captureBadgeLabel ?? this.captureBadgeLabel,
     );
   }
 
@@ -106,5 +124,8 @@ class CameraState extends Equatable {
         zoomOptions,
         focusPoint,
         isFocusLocked,
+        capturePaths,
+        isCapturing,
+        captureBadgeLabel,
       ];
 }

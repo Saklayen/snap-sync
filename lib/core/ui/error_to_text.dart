@@ -13,6 +13,7 @@ String _cameraMessage(CameraError error) => switch (error) {
         'Camera access is turned off. Enable it in Settings to capture photos.',
       CameraError.noCameraAvailable => 'No back camera was found on this device.',
       CameraError.hardwareFailure => 'The camera could not be started. Try again.',
+      CameraError.captureFailed => 'The photo could not be saved. Try again.',
     };
 
 String _networkMessage(NetworkError error) => switch (error) {

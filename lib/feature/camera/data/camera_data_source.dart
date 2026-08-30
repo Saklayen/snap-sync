@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:camera/camera.dart';
@@ -5,9 +6,13 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/domain/app_error.dart';
 import '../../../core/domain/result.dart';
+import 'capture_storage.dart';
 import 'camera_session.dart';
 
 class CameraDataSource {
+  CameraDataSource(this._storage);
+
+  final CaptureStorage _storage;
   CameraController? _controller;
   CameraSession? _session;
   Future<Result<CameraSession>>? _pending;
@@ -95,6 +100,22 @@ class CameraDataSource {
       await _controller?.setFocusMode(FocusMode.locked);
     } on CameraException {
       return;
+    }
+  }
+
+  Future<Result<String>> capture() async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) {
+      return const Failure(CameraError.captureFailed);
+    }
+
+    try {
+      final shot = await controller.takePicture();
+      return Success(await _storage.persist(shot.path));
+    } on CameraException {
+      return const Failure(CameraError.captureFailed);
+    } on FileSystemException {
+      return const Failure(CameraError.captureFailed);
     }
   }
 
