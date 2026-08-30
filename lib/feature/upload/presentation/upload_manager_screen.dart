@@ -15,7 +15,7 @@ class UploadManagerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => UploadManagerBloc(locator(), locator()),
+      create: (_) => UploadManagerBloc(locator(), locator(), locator()),
       child: const _UploadManagerView(),
     );
   }
@@ -32,7 +32,10 @@ class _UploadManagerView extends StatelessWidget {
           builder: (context, state) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _Header(),
+              _Header(
+                label: state.connectionLabel,
+                tone: state.connectionTone,
+              ),
               _BatchSummary(
                 progress: state.progress,
                 progressLabel: state.progressLabel,
@@ -56,7 +59,10 @@ class _UploadManagerView extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header();
+  const _Header({required this.label, required this.tone});
+
+  final String label;
+  final UploadTone tone;
 
   @override
   Widget build(BuildContext context) {
@@ -64,12 +70,54 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       child: Row(
         children: [
+          Expanded(
+            child: Text(
+              'Upload Manager',
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          _ConnectionPill(label: label, tone: tone),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConnectionPill extends StatelessWidget {
+  const _ConnectionPill({required this.label, required this.tone});
+
+  final String label;
+  final UploadTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = context.colorFor(tone);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+          ),
+          const SizedBox(width: 8),
           Text(
-            'Upload Manager',
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
-                ?.copyWith(fontWeight: FontWeight.w700),
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: color,
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w700,
+                ),
           ),
         ],
       ),

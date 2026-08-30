@@ -50,6 +50,8 @@ class UploadManagerState extends Equatable {
     this.progressLabel = '',
     this.bytesLabel = '',
     this.isEmpty = true,
+    this.connectionLabel = '',
+    this.connectionTone = UploadTone.queued,
   });
 
   final List<UploadRowUi> rows;
@@ -58,6 +60,8 @@ class UploadManagerState extends Equatable {
   final String progressLabel;
   final String bytesLabel;
   final bool isEmpty;
+  final String connectionLabel;
+  final UploadTone connectionTone;
 
   UploadManagerState copyWith({
     List<UploadRowUi>? rows,
@@ -66,6 +70,8 @@ class UploadManagerState extends Equatable {
     String? progressLabel,
     String? bytesLabel,
     bool? isEmpty,
+    String? connectionLabel,
+    UploadTone? connectionTone,
   }) {
     return UploadManagerState(
       rows: rows ?? this.rows,
@@ -74,10 +80,20 @@ class UploadManagerState extends Equatable {
       progressLabel: progressLabel ?? this.progressLabel,
       bytesLabel: bytesLabel ?? this.bytesLabel,
       isEmpty: isEmpty ?? this.isEmpty,
+      connectionLabel: connectionLabel ?? this.connectionLabel,
+      connectionTone: connectionTone ?? this.connectionTone,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [rows, pendingLabel, progress, progressLabel, bytesLabel, isEmpty];
+  List<Object?> get props => [
+        rows,
+        pendingLabel,
+        progress,
+        progressLabel,
+        bytesLabel,
+        isEmpty,
+        connectionLabel,
+        connectionTone,
+      ];
 }

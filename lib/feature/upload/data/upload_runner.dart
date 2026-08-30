@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../../core/data/database/upload_queue_dao.dart';
 import '../../../core/data/network/upload_client.dart';
+import '../../../core/data/sync/connectivity_observer.dart';
 import '../../../core/domain/result.dart';
 import '../../../core/domain/upload_state.dart';
 import '../../../core/ui/error_to_text.dart';
@@ -9,10 +10,11 @@ import '../../../core/ui/error_to_text.dart';
 const _retryBackoff = Duration(milliseconds: 900);
 
 class UploadRunner {
-  UploadRunner(this._queue, this._client);
+  UploadRunner(this._queue, this._client, this._connectivity);
 
   final UploadQueueDao _queue;
   final UploadClient _client;
+  final ConnectivityObserver _connectivity;
 
   Future<void>? _running;
 
@@ -20,6 +22,8 @@ class UploadRunner {
 
   Future<void> _drain() async {
     while (true) {
+      if (!await _connectivity.isOnline()) return;
+
       final item = await _queue.nextEligible(maxAttempts: maxUploadAttempts);
       if (item == null) return;
 

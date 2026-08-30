@@ -21,7 +21,7 @@ class CameraPreviewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => CameraBloc(locator(), locator())..add(const CameraStarted()),
+      create: (_) => CameraBloc(locator(), locator(), locator())..add(const CameraStarted()),
       child: const _CameraView(),
     );
   }

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/data/database/app_database.dart';
 import '../../../core/data/database/upload_queue_dao.dart';
+import '../../../core/data/sync/connectivity_observer.dart';
 import '../../../core/designsystem/theme/app_status_colors.dart';
 import '../../../core/domain/upload_state.dart';
 import '../../../core/ui/byte_format.dart';
@@ -12,17 +13,23 @@ import 'upload_event.dart';
 import 'upload_state.dart';
 
 class UploadManagerBloc extends Bloc<UploadManagerEvent, UploadManagerState> {
-  UploadManagerBloc(this._queue, this._runner) : super(const UploadManagerState()) {
+  UploadManagerBloc(this._queue, this._runner, this._connectivity)
+      : super(const UploadManagerState()) {
     on<UploadQueueChanged>(_onQueueChanged);
+    on<UploadConnectivityChanged>(_onConnectivityChanged);
 
     _queueSubscription =
         _queue.watchSubmitted().listen((items) => add(UploadQueueChanged(items)));
 
-    unawaited(_runner.start());
+    _connectivitySubscription = _connectivity
+        .observe()
+        .listen((isOnline) => add(UploadConnectivityChanged(isOnline)));
   }
 
   final UploadQueueDao _queue;
   final UploadRunner _runner;
+  final ConnectivityObserver _connectivity;
+  late final StreamSubscription<void> _connectivitySubscription;
   late final StreamSubscription<void> _queueSubscription;
 
   void _onQueueChanged(UploadQueueChanged event, Emitter<UploadManagerState> emit) {
@@ -31,7 +38,7 @@ class UploadManagerBloc extends Bloc<UploadManagerEvent, UploadManagerState> {
     final size = items.fold<int>(0, (total, item) => total + item.totalBytes);
     final progress = size == 0 ? 0.0 : sent / size;
 
-    emit(UploadManagerState(
+    emit(state.copyWith(
       rows: _rowsFor(items),
       pendingLabel: 'PENDING UPLOADS (${items.length})',
       progress: progress,
@@ -41,8 +48,21 @@ class UploadManagerBloc extends Bloc<UploadManagerEvent, UploadManagerState> {
     ));
   }
 
+  void _onConnectivityChanged(
+    UploadConnectivityChanged event,
+    Emitter<UploadManagerState> emit,
+  ) {
+    emit(state.copyWith(
+      connectionLabel: event.isOnline ? 'STABLE LINK' : 'NO CONNECTION',
+      connectionTone: event.isOnline ? UploadTone.synced : UploadTone.retrying,
+    ));
+
+    if (event.isOnline) unawaited(_runner.start());
+  }
+
   @override
   Future<void> close() async {
+    await _connectivitySubscription.cancel();
     await _queueSubscription.cancel();
     return super.close();
   }

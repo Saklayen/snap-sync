@@ -7,6 +7,7 @@ import '../../../core/domain/result.dart';
 import '../../../core/ui/effect_emitter.dart';
 import '../../../core/ui/error_to_text.dart';
 import '../../../core/data/database/upload_queue_dao.dart';
+import '../../../core/data/sync/upload_scheduler.dart';
 import '../data/camera_data_source.dart';
 import '../data/camera_session.dart';
 import 'camera_effect.dart';
@@ -16,7 +17,8 @@ import 'camera_state.dart';
 const _zoomStops = [0.5, 1.0, 2.0, 5.0];
 
 class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<CameraEffect> {
-  CameraBloc(this._dataSource, this._queue) : super(const CameraState()) {
+  CameraBloc(this._dataSource, this._queue, this._scheduler)
+      : super(const CameraState()) {
     on<CameraStarted>(_onStarted);
     on<CameraResumed>(_onResumed);
     on<CameraStopped>(_onStopped);
@@ -37,6 +39,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
 
   final CameraDataSource _dataSource;
   final UploadQueueDao _queue;
+  final UploadScheduler _scheduler;
   late final StreamSubscription<void> _batchSubscription;
 
   Future<void> _onStarted(CameraStarted event, Emitter<CameraState> emit) async {
@@ -137,6 +140,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
     Emitter<CameraState> emit,
   ) async {
     await _queue.closeCurrentBatch();
+    await _scheduler.enqueue();
     emitEffect(const OpenUploadManagerEffect());
   }
 

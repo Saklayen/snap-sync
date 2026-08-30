@@ -17,3 +17,12 @@ final class UploadQueueChanged extends UploadManagerEvent {
   @override
   List<Object?> get props => [items];
 }
+
+final class UploadConnectivityChanged extends UploadManagerEvent {
+  const UploadConnectivityChanged(this.isOnline);
+
+  final bool isOnline;
+
+  @override
+  List<Object?> get props => [isOnline];
+}
