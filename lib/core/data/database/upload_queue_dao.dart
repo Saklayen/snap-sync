@@ -35,6 +35,58 @@ class UploadQueueDao {
         );
   }
 
+  Future<UploadItem?> nextEligible({required int maxAttempts}) async {
+    final row = await _database.customSelect(
+      'SELECT * FROM upload_items '
+      'WHERE batch_id < (SELECT current_batch_id FROM queue_settings WHERE id = $_settingsId) '
+      'AND state IN (?, ?) AND attempts < ? ORDER BY id LIMIT 1',
+      variables: [
+        Variable.withInt(UploadState.pending.index),
+        Variable.withInt(UploadState.failed.index),
+        Variable.withInt(maxAttempts),
+      ],
+      readsFrom: {_database.uploadItems, _database.queueSettings},
+    ).getSingleOrNull();
+
+    return row == null ? null : _database.uploadItems.map(row.data);
+  }
+
+  Future<void> markUploading(int id) => _write(
+        id,
+        const UploadItemsCompanion(
+          state: Value(UploadState.uploading),
+          bytesSent: Value(0),
+        ),
+      );
+
+  Future<void> updateProgress(int id, int bytesSent) =>
+      _write(id, UploadItemsCompanion(bytesSent: Value(bytesSent)));
+
+  Future<void> markSynced(int id, int totalBytes) => _write(
+        id,
+        UploadItemsCompanion(
+          state: const Value(UploadState.synced),
+          bytesSent: Value(totalBytes),
+          lastError: const Value(null),
+        ),
+      );
+
+  Future<void> markFailed(int id, int attempts, String error) => _write(
+        id,
+        UploadItemsCompanion(
+          state: const Value(UploadState.failed),
+          attempts: Value(attempts),
+          lastError: Value(error),
+          bytesSent: const Value(0),
+        ),
+      );
+
+  Future<void> _write(int id, UploadItemsCompanion values) async {
+    await (_database.update(_database.uploadItems)
+          ..where((row) => row.id.equals(id)))
+        .write(values);
+  }
+
   Future<void> closeCurrentBatch() async {
     await _database.transaction(() async {
       final batchId = await currentBatchId();

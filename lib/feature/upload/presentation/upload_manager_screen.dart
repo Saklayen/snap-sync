@@ -15,7 +15,7 @@ class UploadManagerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => UploadManagerBloc(locator()),
+      create: (_) => UploadManagerBloc(locator(), locator()),
       child: const _UploadManagerView(),
     );
   }

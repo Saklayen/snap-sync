@@ -7,20 +7,22 @@ import '../../../core/data/database/upload_queue_dao.dart';
 import '../../../core/designsystem/theme/app_status_colors.dart';
 import '../../../core/domain/upload_state.dart';
 import '../../../core/ui/byte_format.dart';
+import '../data/upload_runner.dart';
 import 'upload_event.dart';
 import 'upload_state.dart';
 
-const maxUploadAttempts = 5;
-
 class UploadManagerBloc extends Bloc<UploadManagerEvent, UploadManagerState> {
-  UploadManagerBloc(this._queue) : super(const UploadManagerState()) {
+  UploadManagerBloc(this._queue, this._runner) : super(const UploadManagerState()) {
     on<UploadQueueChanged>(_onQueueChanged);
 
     _queueSubscription =
         _queue.watchSubmitted().listen((items) => add(UploadQueueChanged(items)));
+
+    unawaited(_runner.start());
   }
 
   final UploadQueueDao _queue;
+  final UploadRunner _runner;
   late final StreamSubscription<void> _queueSubscription;
 
   void _onQueueChanged(UploadQueueChanged event, Emitter<UploadManagerState> emit) {
@@ -72,6 +74,8 @@ UploadRowUi _rowFor(UploadItem item, {required bool isHead}) {
         isActive: true,
         hasProgressBar: true,
       ),
+    UploadState.failed when item.attempts >= maxUploadAttempts =>
+      _row(item, 'UPLOAD FAILED', UploadTone.retrying, progress),
     UploadState.failed => _row(
         item,
         'RETRYING… ATTEMPT ${item.attempts}/$maxUploadAttempts',
