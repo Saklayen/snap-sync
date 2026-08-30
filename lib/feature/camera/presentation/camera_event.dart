@@ -59,3 +59,16 @@ final class CameraBatchChanged extends CameraEvent {
   @override
   List<Object?> get props => [paths];
 }
+
+final class CameraLensSelected extends CameraEvent {
+  const CameraLensSelected(this.index);
+
+  final int index;
+
+  @override
+  List<Object?> get props => [index];
+}
+
+final class CameraFlipped extends CameraEvent {
+  const CameraFlipped();
+}

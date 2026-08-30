@@ -18,6 +18,10 @@ class CameraDataSource {
   Future<Result<CameraSession>>? _pending;
   double? _queuedZoom;
   bool _isApplyingZoom = false;
+  List<CameraDescription> _backCameras = const [];
+  CameraDescription? _frontCamera;
+  int _activeLensIndex = 0;
+  bool _isFrontLens = false;
 
   Future<Result<CameraSession>> start({bool requestPermission = true}) {
     return _pending ??= _start(requestPermission: requestPermission)
@@ -44,13 +48,27 @@ class CameraDataSource {
     await _disposeController();
 
     final cameras = await availableCameras();
-    final back = cameras.where((c) => c.lensDirection == CameraLensDirection.back);
-    if (back.isEmpty) {
+    _backCameras = [
+      for (final camera in cameras)
+        if (camera.lensDirection == CameraLensDirection.back) camera,
+    ];
+    final frontCameras = [
+      for (final camera in cameras)
+        if (camera.lensDirection == CameraLensDirection.front) camera,
+    ];
+    _frontCamera = frontCameras.isEmpty ? null : frontCameras.first;
+
+    if (_backCameras.isEmpty) {
       return const Failure(CameraError.noCameraAvailable);
     }
 
+    _activeLensIndex = _activeLensIndex.clamp(0, _backCameras.length - 1);
+
+    final front = _frontCamera;
+    _isFrontLens = _isFrontLens && front != null;
+
     final controller = CameraController(
-      back.first,
+      _isFrontLens ? front! : _backCameras[_activeLensIndex],
       ResolutionPreset.high,
       enableAudio: false,
     );
@@ -62,6 +80,10 @@ class CameraDataSource {
         controller: controller,
         minZoom: await controller.getMinZoomLevel(),
         maxZoom: await controller.getMaxZoomLevel(),
+        lensCount: _backCameras.length,
+        activeLensIndex: _activeLensIndex,
+        canFlip: _frontCamera != null,
+        isFrontLens: _isFrontLens,
       );
     } on CameraException {
       await controller.dispose();
@@ -101,6 +123,28 @@ class CameraDataSource {
     } on CameraException {
       return;
     }
+  }
+
+  Future<Result<CameraSession>> flipLens() async {
+    await _pending;
+    _isFrontLens = !_isFrontLens;
+    await _disposeController();
+
+    return start(requestPermission: false);
+  }
+
+  Future<Result<CameraSession>> selectLens(int index) async {
+    if (index == _activeLensIndex && !_isFrontLens) {
+      final session = _session;
+      if (session != null) return Success(session);
+    }
+
+    await _pending;
+    _activeLensIndex = index;
+    _isFrontLens = false;
+    await _disposeController();
+
+    return start(requestPermission: false);
   }
 
   Future<Result<String>> capture() async {

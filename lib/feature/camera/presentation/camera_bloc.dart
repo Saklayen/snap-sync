@@ -26,6 +26,8 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
     on<CameraFocusReleased>(_onFocusReleased);
     on<CameraCaptureRequested>(_onCaptureRequested);
     on<CameraBatchChanged>(_onBatchChanged);
+    on<CameraLensSelected>(_onLensSelected);
+    on<CameraFlipped>(_onFlipped);
 
     _batchSubscription = _queue.watchCurrentBatch().listen(
           (items) => add(CameraBatchChanged([for (final item in items) item.filePath])),
@@ -37,17 +39,17 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
   late final StreamSubscription<void> _batchSubscription;
 
   Future<void> _onStarted(CameraStarted event, Emitter<CameraState> emit) async {
-    emit(const CameraState(status: CameraStatus.starting));
-    emit(_stateFor(await _dataSource.start()));
+    emit(_keepBatch(const CameraState(status: CameraStatus.starting)));
+    emit(_keepBatch(_stateFor(await _dataSource.start())));
   }
 
   Future<void> _onResumed(CameraResumed event, Emitter<CameraState> emit) async {
-    emit(_stateFor(await _dataSource.start(requestPermission: false)));
+    emit(_keepBatch(_stateFor(await _dataSource.start(requestPermission: false))));
   }
 
   Future<void> _onStopped(CameraStopped event, Emitter<CameraState> emit) async {
     await _dataSource.stop();
-    emit(const CameraState());
+    emit(_keepBatch(const CameraState()));
   }
 
   Future<void> _onRecoveryRequested(
@@ -108,12 +110,30 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
     }
   }
 
+  Future<void> _onLensSelected(
+    CameraLensSelected event,
+    Emitter<CameraState> emit,
+  ) async {
+    emit(state.copyWith(status: CameraStatus.starting));
+    emit(_keepBatch(_stateFor(await _dataSource.selectLens(event.index))));
+  }
+
+  Future<void> _onFlipped(CameraFlipped event, Emitter<CameraState> emit) async {
+    emit(state.copyWith(status: CameraStatus.starting));
+    emit(_keepBatch(_stateFor(await _dataSource.flipLens())));
+  }
+
   void _onBatchChanged(CameraBatchChanged event, Emitter<CameraState> emit) {
     emit(state.copyWith(
       capturePaths: event.paths,
       captureBadgeLabel: _captureBadgeLabelFor(event.paths.length),
     ));
   }
+
+  CameraState _keepBatch(CameraState next) => next.copyWith(
+        capturePaths: state.capturePaths,
+        captureBadgeLabel: state.captureBadgeLabel,
+      );
 
   CameraState _stateFor(Result<CameraSession> result) => switch (result) {
         Success(:final data) => _readyState(data),
@@ -134,6 +154,12 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
       zoom: zoom,
       minZoom: session.minZoom,
       maxZoom: session.maxZoom,
+      lensOptions: _lensOptionsFor(
+        session.lensCount,
+        session.activeLensIndex,
+        session.isFrontLens,
+      ),
+      canFlip: session.canFlip,
       minZoomLabel: _stopLabelFor(session.minZoom),
       maxZoomLabel: _stopLabelFor(session.maxZoom),
       zoomOptions: _zoomOptionsFor(zoom, session.minZoom, session.maxZoom),
@@ -167,8 +193,22 @@ List<ZoomOption> _zoomOptionsFor(double zoom, double minZoom, double maxZoom) {
 
 String _captureBadgeLabelFor(int count) => '$count';
 
-String _stopLabelFor(double stop) =>
-    stop == stop.roundToDouble() ? '${stop.toInt()}x' : '${stop}x';
+List<LensOption> _lensOptionsFor(int lensCount, int activeIndex, bool isFrontLens) {
+  if (isFrontLens || lensCount < 2) return const [];
+
+  return [
+    for (var index = 0; index < lensCount; index++)
+      LensOption(
+        label: 'LENS ${index + 1}',
+        index: index,
+        isSelected: index == activeIndex,
+      ),
+  ];
+}
+
+String _stopLabelFor(double stop) => stop == stop.roundToDouble()
+    ? '${stop.toInt()}x'
+    : '${stop.toStringAsFixed(1)}x';
 
 CameraRecovery _recoveryFor(AppError error) => switch (error) {
       CameraError.permissionDenied => CameraRecovery.retry,

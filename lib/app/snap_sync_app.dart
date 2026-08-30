@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/designsystem/theme/app_theme.dart';
-import '../feature/camera/presentation/camera_screen.dart';
+import '../feature/camera/presentation/camera_preview_screen.dart';
 
 class SnapSyncApp extends StatelessWidget {
   const SnapSyncApp({super.key});
@@ -12,7 +12,7 @@ class SnapSyncApp extends StatelessWidget {
       title: 'SnapSync',
       debugShowCheckedModeBanner: false,
       theme: appTheme(),
-      home: const CameraScreen(),
+      home: const CameraPreviewScreen(),
     );
   }
 }

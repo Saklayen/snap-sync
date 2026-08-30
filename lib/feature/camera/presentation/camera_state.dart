@@ -22,6 +22,21 @@ class ZoomOption extends Equatable {
   List<Object?> get props => [label, level, isSelected];
 }
 
+class LensOption extends Equatable {
+  const LensOption({
+    required this.label,
+    required this.index,
+    required this.isSelected,
+  });
+
+  final String label;
+  final int index;
+  final bool isSelected;
+
+  @override
+  List<Object?> get props => [label, index, isSelected];
+}
+
 class CameraState extends Equatable {
   const CameraState({
     this.status = CameraStatus.starting,
@@ -35,6 +50,8 @@ class CameraState extends Equatable {
     this.minZoomLabel = '',
     this.maxZoomLabel = '',
     this.zoomOptions = const [],
+    this.lensOptions = const [],
+    this.canFlip = false,
     this.focusPoint = Offset.zero,
     this.isFocusLocked = false,
     this.capturePaths = const [],
@@ -53,6 +70,8 @@ class CameraState extends Equatable {
   final String minZoomLabel;
   final String maxZoomLabel;
   final List<ZoomOption> zoomOptions;
+  final List<LensOption> lensOptions;
+  final bool canFlip;
   final Offset focusPoint;
   final bool isFocusLocked;
   final List<String> capturePaths;
@@ -64,6 +83,8 @@ class CameraState extends Equatable {
   bool get hasRecovery => recovery != CameraRecovery.none;
 
   bool get isZoomAdjustable => maxZoom > minZoom;
+
+  bool get hasLensChoice => lensOptions.isNotEmpty;
 
   bool get hasCaptures => capturePaths.isNotEmpty;
 
@@ -83,6 +104,8 @@ class CameraState extends Equatable {
     String? minZoomLabel,
     String? maxZoomLabel,
     List<ZoomOption>? zoomOptions,
+    List<LensOption>? lensOptions,
+    bool? canFlip,
     Offset? focusPoint,
     bool? isFocusLocked,
     List<String>? capturePaths,
@@ -101,6 +124,8 @@ class CameraState extends Equatable {
       minZoomLabel: minZoomLabel ?? this.minZoomLabel,
       maxZoomLabel: maxZoomLabel ?? this.maxZoomLabel,
       zoomOptions: zoomOptions ?? this.zoomOptions,
+      lensOptions: lensOptions ?? this.lensOptions,
+      canFlip: canFlip ?? this.canFlip,
       focusPoint: focusPoint ?? this.focusPoint,
       isFocusLocked: isFocusLocked ?? this.isFocusLocked,
       capturePaths: capturePaths ?? this.capturePaths,
@@ -122,6 +147,8 @@ class CameraState extends Equatable {
         minZoomLabel,
         maxZoomLabel,
         zoomOptions,
+        lensOptions,
+        canFlip,
         focusPoint,
         isFocusLocked,
         capturePaths,

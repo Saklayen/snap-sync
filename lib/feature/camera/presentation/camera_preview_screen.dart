@@ -13,8 +13,8 @@ import 'camera_effect.dart';
 import 'camera_event.dart';
 import 'camera_state.dart';
 
-class CameraScreen extends StatelessWidget {
-  const CameraScreen({super.key});
+class CameraPreviewScreen extends StatelessWidget {
+  const CameraPreviewScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -81,11 +81,17 @@ class _CameraViewState extends State<_CameraView> with WidgetsBindingObserver {
                 minZoomLabel: state.minZoomLabel,
                 maxZoomLabel: state.maxZoomLabel,
                 zoomOptions: state.zoomOptions,
+                lensOptions: state.lensOptions,
+                canFlip: state.canFlip,
                 isZoomAdjustable: state.isZoomAdjustable,
                 focusPoint: state.focusPoint,
                 isFocusLocked: state.isFocusLocked,
                 onZoomChanged: (level) =>
                     context.read<CameraBloc>().add(CameraZoomChanged(level)),
+                onLensSelected: (index) =>
+                    context.read<CameraBloc>().add(CameraLensSelected(index)),
+                onFlipPressed: () =>
+                    context.read<CameraBloc>().add(const CameraFlipped()),
                 onFocusRequested: (point) =>
                     context.read<CameraBloc>().add(CameraFocusRequested(point)),
                 onFocusReleased: () =>
@@ -130,10 +136,14 @@ class _CameraSurface extends StatelessWidget {
     required this.minZoomLabel,
     required this.maxZoomLabel,
     required this.zoomOptions,
+    required this.lensOptions,
+    required this.canFlip,
     required this.isZoomAdjustable,
     required this.focusPoint,
     required this.isFocusLocked,
     required this.onZoomChanged,
+    required this.onLensSelected,
+    required this.onFlipPressed,
     required this.onFocusRequested,
     required this.onFocusReleased,
     required this.latestCapturePath,
@@ -150,10 +160,14 @@ class _CameraSurface extends StatelessWidget {
   final String minZoomLabel;
   final String maxZoomLabel;
   final List<ZoomOption> zoomOptions;
+  final List<LensOption> lensOptions;
+  final bool canFlip;
   final bool isZoomAdjustable;
   final Offset focusPoint;
   final bool isFocusLocked;
   final ValueChanged<double> onZoomChanged;
+  final ValueChanged<int> onLensSelected;
+  final VoidCallback onFlipPressed;
   final ValueChanged<Offset> onFocusRequested;
   final VoidCallback onFocusReleased;
   final String latestCapturePath;
@@ -209,6 +223,7 @@ class _CameraSurface extends StatelessWidget {
                   onPressed: onFocusReleased,
                 ),
                 const SizedBox(height: 20),
+                _LensPills(options: lensOptions, onSelected: onLensSelected),
                 _ZoomPills(options: zoomOptions, onSelected: onZoomChanged),
                 const SizedBox(height: 28),
                 _ShutterRow(
@@ -216,7 +231,9 @@ class _CameraSurface extends StatelessWidget {
                   badgeLabel: captureBadgeLabel,
                   hasCaptures: hasCaptures,
                   isCapturing: isCapturing,
+                  canFlip: canFlip,
                   onCapturePressed: onCapturePressed,
+                  onFlipPressed: onFlipPressed,
                 ),
               ],
             ),
@@ -328,6 +345,70 @@ class _Preview extends StatelessWidget {
           width: controller.value.previewSize?.height ?? 1,
           height: controller.value.previewSize?.width ?? 1,
           child: CameraPreview(controller),
+        ),
+      ),
+    );
+  }
+}
+
+class _LensPills extends StatelessWidget {
+  const _LensPills({required this.options, required this.onSelected});
+
+  final List<LensOption> options;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    if (options.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (final option in options)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: _LensPill(
+                label: option.label,
+                isSelected: option.isSelected,
+                onPressed: () => onSelected(option.index),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LensPill extends StatelessWidget {
+  const _LensPill({
+    required this.label,
+    required this.isSelected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected ? white : overlayStrong,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: isSelected ? ink900 : white,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w700,
+              ),
         ),
       ),
     );
@@ -481,7 +562,9 @@ class _ShutterRow extends StatelessWidget {
     required this.badgeLabel,
     required this.hasCaptures,
     required this.isCapturing,
+    required this.canFlip,
     required this.onCapturePressed,
+    required this.onFlipPressed,
   });
 
   static const double _sideSlot = 64;
@@ -490,7 +573,9 @@ class _ShutterRow extends StatelessWidget {
   final String badgeLabel;
   final bool hasCaptures;
   final bool isCapturing;
+  final bool canFlip;
   final VoidCallback onCapturePressed;
+  final VoidCallback onFlipPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -508,7 +593,13 @@ class _ShutterRow extends StatelessWidget {
             ),
           ),
           _ShutterButton(isCapturing: isCapturing, onPressed: onCapturePressed),
-          const SizedBox(width: _sideSlot),
+          SizedBox(
+            width: _sideSlot,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: _FlipButton(isVisible: canFlip, onPressed: onFlipPressed),
+            ),
+          ),
         ],
       ),
     );
@@ -594,6 +685,31 @@ class _ShutterButton extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FlipButton extends StatelessWidget {
+  const _FlipButton({required this.isVisible, required this.onPressed});
+
+  final bool isVisible;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isVisible) return const SizedBox.shrink();
+
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: overlayStrong,
+        ),
+        child: const Icon(Icons.cameraswitch_rounded, size: 24, color: white),
       ),
     );
   }
