@@ -28,6 +28,7 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
     on<CameraBatchChanged>(_onBatchChanged);
     on<CameraLensSelected>(_onLensSelected);
     on<CameraFlipped>(_onFlipped);
+    on<CameraBatchSubmitted>(_onBatchSubmitted);
 
     _batchSubscription = _queue.watchCurrentBatch().listen(
           (items) => add(CameraBatchChanged([for (final item in items) item.filePath])),
@@ -127,12 +128,22 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
     emit(state.copyWith(
       capturePaths: event.paths,
       captureBadgeLabel: _captureBadgeLabelFor(event.paths.length),
+      uploadLabel: _uploadLabelFor(event.paths.length),
     ));
+  }
+
+  Future<void> _onBatchSubmitted(
+    CameraBatchSubmitted event,
+    Emitter<CameraState> emit,
+  ) async {
+    await _queue.closeCurrentBatch();
+    emitEffect(const OpenUploadManagerEffect());
   }
 
   CameraState _keepBatch(CameraState next) => next.copyWith(
         capturePaths: state.capturePaths,
         captureBadgeLabel: state.captureBadgeLabel,
+        uploadLabel: state.uploadLabel,
       );
 
   CameraState _stateFor(Result<CameraSession> result) => switch (result) {
@@ -192,6 +203,8 @@ List<ZoomOption> _zoomOptionsFor(double zoom, double minZoom, double maxZoom) {
 }
 
 String _captureBadgeLabelFor(int count) => '$count';
+
+String _uploadLabelFor(int count) => 'UPLOAD BATCH ($count)';
 
 List<LensOption> _lensOptionsFor(int lensCount, int activeIndex, bool isFrontLens) {
   if (isFrontLens || lensCount < 2) return const [];

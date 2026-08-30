@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../../core/designsystem/theme/app_colors.dart';
 import '../../../core/ui/effect_listener.dart';
 import '../../../app/locator.dart';
+import '../../upload/presentation/upload_manager_screen.dart';
 import 'camera_bloc.dart';
 import 'camera_effect.dart';
 import 'camera_event.dart';
@@ -69,6 +70,11 @@ class _CameraViewState extends State<_CameraView> with WidgetsBindingObserver {
         OpenAppSettingsEffect() => openAppSettings(),
         ShowMessageEffect(:final message) => ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(message))),
+        OpenUploadManagerEffect() => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const UploadManagerScreen(),
+            ),
+          ),
       },
       child: Scaffold(
         body: BlocBuilder<CameraBloc, CameraState>(
@@ -100,8 +106,11 @@ class _CameraViewState extends State<_CameraView> with WidgetsBindingObserver {
                 captureBadgeLabel: state.captureBadgeLabel,
                 hasCaptures: state.hasCaptures,
                 isCapturing: state.isCapturing,
+                uploadLabel: state.uploadLabel,
                 onCapturePressed: () =>
                     context.read<CameraBloc>().add(const CameraCaptureRequested()),
+                onUploadPressed: () =>
+                    context.read<CameraBloc>().add(const CameraBatchSubmitted()),
               ),
             CameraStatus.starting => const _Starting(),
             _ => _Unavailable(
@@ -150,7 +159,9 @@ class _CameraSurface extends StatelessWidget {
     required this.captureBadgeLabel,
     required this.hasCaptures,
     required this.isCapturing,
+    required this.uploadLabel,
     required this.onCapturePressed,
+    required this.onUploadPressed,
   });
 
   final CameraController controller;
@@ -174,7 +185,9 @@ class _CameraSurface extends StatelessWidget {
   final String captureBadgeLabel;
   final bool hasCaptures;
   final bool isCapturing;
+  final String uploadLabel;
   final VoidCallback onCapturePressed;
+  final VoidCallback onUploadPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -234,6 +247,12 @@ class _CameraSurface extends StatelessWidget {
                   canFlip: canFlip,
                   onCapturePressed: onCapturePressed,
                   onFlipPressed: onFlipPressed,
+                ),
+                const SizedBox(height: 18),
+                _UploadBatchButton(
+                  label: uploadLabel,
+                  isVisible: hasCaptures,
+                  onPressed: onUploadPressed,
                 ),
               ],
             ),
@@ -684,6 +703,45 @@ class _ShutterButton extends StatelessWidget {
               decoration: BoxDecoration(shape: BoxShape.circle, color: white),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UploadBatchButton extends StatelessWidget {
+  const _UploadBatchButton({
+    required this.label,
+    required this.isVisible,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool isVisible;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isVisible) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: FilledButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.cloud_upload_outlined, size: 20),
+        label: Text(
+          label,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: white,
+                letterSpacing: 1.1,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        style: FilledButton.styleFrom(
+          backgroundColor: blue500,
+          foregroundColor: white,
+          minimumSize: const Size.fromHeight(52),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
     );

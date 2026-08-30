@@ -35,12 +35,41 @@ class UploadQueueDao {
         );
   }
 
+  Future<void> closeCurrentBatch() async {
+    await _database.transaction(() async {
+      final batchId = await currentBatchId();
+      final open = await (_database.select(_database.uploadItems)
+            ..where((row) => row.batchId.equals(batchId)))
+          .get();
+
+      if (open.isEmpty) return;
+
+      await (_database.update(_database.queueSettings)
+            ..where((row) => row.id.equals(_settingsId)))
+          .write(QueueSettingsCompanion(currentBatchId: Value(batchId + 1)));
+    });
+  }
+
+  Stream<List<UploadItem>> watchSubmitted() {
+    return _watch(
+      'SELECT * FROM upload_items '
+      'WHERE batch_id < (SELECT current_batch_id FROM queue_settings WHERE id = $_settingsId) '
+      'ORDER BY id',
+    );
+  }
+
   Stream<List<UploadItem>> watchCurrentBatch() {
+    return _watch(
+      'SELECT * FROM upload_items '
+      'WHERE batch_id = (SELECT current_batch_id FROM queue_settings WHERE id = $_settingsId) '
+      'ORDER BY id',
+    );
+  }
+
+  Stream<List<UploadItem>> _watch(String query) {
     return _database
         .customSelect(
-          'SELECT * FROM upload_items '
-          'WHERE batch_id = (SELECT current_batch_id FROM queue_settings WHERE id = $_settingsId) '
-          'ORDER BY id',
+          query,
           readsFrom: {_database.uploadItems, _database.queueSettings},
         )
         .watch()

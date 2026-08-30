@@ -57,6 +57,7 @@ class CameraState extends Equatable {
     this.capturePaths = const [],
     this.isCapturing = false,
     this.captureBadgeLabel = '',
+    this.uploadLabel = '',
   });
 
   final CameraStatus status;
@@ -77,6 +78,7 @@ class CameraState extends Equatable {
   final List<String> capturePaths;
   final bool isCapturing;
   final String captureBadgeLabel;
+  final String uploadLabel;
 
   bool get isPreviewVisible => status == CameraStatus.ready && controller != null;
 
@@ -111,6 +113,7 @@ class CameraState extends Equatable {
     List<String>? capturePaths,
     bool? isCapturing,
     String? captureBadgeLabel,
+    String? uploadLabel,
   }) {
     return CameraState(
       status: status ?? this.status,
@@ -131,6 +134,7 @@ class CameraState extends Equatable {
       capturePaths: capturePaths ?? this.capturePaths,
       isCapturing: isCapturing ?? this.isCapturing,
       captureBadgeLabel: captureBadgeLabel ?? this.captureBadgeLabel,
+      uploadLabel: uploadLabel ?? this.uploadLabel,
     );
   }
 
@@ -154,5 +158,6 @@ class CameraState extends Equatable {
         capturePaths,
         isCapturing,
         captureBadgeLabel,
+        uploadLabel,
       ];
 }

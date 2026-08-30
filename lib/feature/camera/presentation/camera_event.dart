@@ -72,3 +72,7 @@ final class CameraLensSelected extends CameraEvent {
 final class CameraFlipped extends CameraEvent {
   const CameraFlipped();
 }
+
+final class CameraBatchSubmitted extends CameraEvent {
+  const CameraBatchSubmitted();
+}
