@@ -20,7 +20,6 @@ class UploadItems extends Table {
 class QueueSettings extends Table {
   IntColumn get id => integer()();
   IntColumn get currentBatchId => integer().withDefault(const Constant(1))();
-  BoolColumn get isPaused => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};

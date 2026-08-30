@@ -582,23 +582,8 @@ class $QueueSettingsTable extends QueueSettings
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
-  static const VerificationMeta _isPausedMeta = const VerificationMeta(
-    'isPaused',
-  );
   @override
-  late final GeneratedColumn<bool> isPaused = GeneratedColumn<bool>(
-    'is_paused',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("is_paused" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
-  );
-  @override
-  List<GeneratedColumn> get $columns => [id, currentBatchId, isPaused];
+  List<GeneratedColumn> get $columns => [id, currentBatchId];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -623,12 +608,6 @@ class $QueueSettingsTable extends QueueSettings
         ),
       );
     }
-    if (data.containsKey('is_paused')) {
-      context.handle(
-        _isPausedMeta,
-        isPaused.isAcceptableOrUnknown(data['is_paused']!, _isPausedMeta),
-      );
-    }
     return context;
   }
 
@@ -646,10 +625,6 @@ class $QueueSettingsTable extends QueueSettings
         DriftSqlType.int,
         data['${effectivePrefix}current_batch_id'],
       )!,
-      isPaused: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_paused'],
-      )!,
     );
   }
 
@@ -662,18 +637,12 @@ class $QueueSettingsTable extends QueueSettings
 class QueueSetting extends DataClass implements Insertable<QueueSetting> {
   final int id;
   final int currentBatchId;
-  final bool isPaused;
-  const QueueSetting({
-    required this.id,
-    required this.currentBatchId,
-    required this.isPaused,
-  });
+  const QueueSetting({required this.id, required this.currentBatchId});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['current_batch_id'] = Variable<int>(currentBatchId);
-    map['is_paused'] = Variable<bool>(isPaused);
     return map;
   }
 
@@ -681,7 +650,6 @@ class QueueSetting extends DataClass implements Insertable<QueueSetting> {
     return QueueSettingsCompanion(
       id: Value(id),
       currentBatchId: Value(currentBatchId),
-      isPaused: Value(isPaused),
     );
   }
 
@@ -693,7 +661,6 @@ class QueueSetting extends DataClass implements Insertable<QueueSetting> {
     return QueueSetting(
       id: serializer.fromJson<int>(json['id']),
       currentBatchId: serializer.fromJson<int>(json['currentBatchId']),
-      isPaused: serializer.fromJson<bool>(json['isPaused']),
     );
   }
   @override
@@ -702,23 +669,19 @@ class QueueSetting extends DataClass implements Insertable<QueueSetting> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'currentBatchId': serializer.toJson<int>(currentBatchId),
-      'isPaused': serializer.toJson<bool>(isPaused),
     };
   }
 
-  QueueSetting copyWith({int? id, int? currentBatchId, bool? isPaused}) =>
-      QueueSetting(
-        id: id ?? this.id,
-        currentBatchId: currentBatchId ?? this.currentBatchId,
-        isPaused: isPaused ?? this.isPaused,
-      );
+  QueueSetting copyWith({int? id, int? currentBatchId}) => QueueSetting(
+    id: id ?? this.id,
+    currentBatchId: currentBatchId ?? this.currentBatchId,
+  );
   QueueSetting copyWithCompanion(QueueSettingsCompanion data) {
     return QueueSetting(
       id: data.id.present ? data.id.value : this.id,
       currentBatchId: data.currentBatchId.present
           ? data.currentBatchId.value
           : this.currentBatchId,
-      isPaused: data.isPaused.present ? data.isPaused.value : this.isPaused,
     );
   }
 
@@ -726,58 +689,49 @@ class QueueSetting extends DataClass implements Insertable<QueueSetting> {
   String toString() {
     return (StringBuffer('QueueSetting(')
           ..write('id: $id, ')
-          ..write('currentBatchId: $currentBatchId, ')
-          ..write('isPaused: $isPaused')
+          ..write('currentBatchId: $currentBatchId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, currentBatchId, isPaused);
+  int get hashCode => Object.hash(id, currentBatchId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is QueueSetting &&
           other.id == this.id &&
-          other.currentBatchId == this.currentBatchId &&
-          other.isPaused == this.isPaused);
+          other.currentBatchId == this.currentBatchId);
 }
 
 class QueueSettingsCompanion extends UpdateCompanion<QueueSetting> {
   final Value<int> id;
   final Value<int> currentBatchId;
-  final Value<bool> isPaused;
   const QueueSettingsCompanion({
     this.id = const Value.absent(),
     this.currentBatchId = const Value.absent(),
-    this.isPaused = const Value.absent(),
   });
   QueueSettingsCompanion.insert({
     this.id = const Value.absent(),
     this.currentBatchId = const Value.absent(),
-    this.isPaused = const Value.absent(),
   });
   static Insertable<QueueSetting> custom({
     Expression<int>? id,
     Expression<int>? currentBatchId,
-    Expression<bool>? isPaused,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (currentBatchId != null) 'current_batch_id': currentBatchId,
-      if (isPaused != null) 'is_paused': isPaused,
     });
   }
 
   QueueSettingsCompanion copyWith({
     Value<int>? id,
     Value<int>? currentBatchId,
-    Value<bool>? isPaused,
   }) {
     return QueueSettingsCompanion(
       id: id ?? this.id,
       currentBatchId: currentBatchId ?? this.currentBatchId,
-      isPaused: isPaused ?? this.isPaused,
     );
   }
 
@@ -790,9 +744,6 @@ class QueueSettingsCompanion extends UpdateCompanion<QueueSetting> {
     if (currentBatchId.present) {
       map['current_batch_id'] = Variable<int>(currentBatchId.value);
     }
-    if (isPaused.present) {
-      map['is_paused'] = Variable<bool>(isPaused.value);
-    }
     return map;
   }
 
@@ -800,8 +751,7 @@ class QueueSettingsCompanion extends UpdateCompanion<QueueSetting> {
   String toString() {
     return (StringBuffer('QueueSettingsCompanion(')
           ..write('id: $id, ')
-          ..write('currentBatchId: $currentBatchId, ')
-          ..write('isPaused: $isPaused')
+          ..write('currentBatchId: $currentBatchId')
           ..write(')'))
         .toString();
   }
@@ -1096,17 +1046,9 @@ typedef $$UploadItemsTableProcessedTableManager =
       PrefetchHooks Function()
     >;
 typedef $$QueueSettingsTableCreateCompanionBuilder =
-    QueueSettingsCompanion Function({
-      Value<int> id,
-      Value<int> currentBatchId,
-      Value<bool> isPaused,
-    });
+    QueueSettingsCompanion Function({Value<int> id, Value<int> currentBatchId});
 typedef $$QueueSettingsTableUpdateCompanionBuilder =
-    QueueSettingsCompanion Function({
-      Value<int> id,
-      Value<int> currentBatchId,
-      Value<bool> isPaused,
-    });
+    QueueSettingsCompanion Function({Value<int> id, Value<int> currentBatchId});
 
 class $$QueueSettingsTableFilterComposer
     extends Composer<_$AppDatabase, $QueueSettingsTable> {
@@ -1124,11 +1066,6 @@ class $$QueueSettingsTableFilterComposer
 
   ColumnFilters<int> get currentBatchId => $composableBuilder(
     column: $table.currentBatchId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get isPaused => $composableBuilder(
-    column: $table.isPaused,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1151,11 +1088,6 @@ class $$QueueSettingsTableOrderingComposer
     column: $table.currentBatchId,
     builder: (column) => ColumnOrderings(column),
   );
-
-  ColumnOrderings<bool> get isPaused => $composableBuilder(
-    column: $table.isPaused,
-    builder: (column) => ColumnOrderings(column),
-  );
 }
 
 class $$QueueSettingsTableAnnotationComposer
@@ -1174,9 +1106,6 @@ class $$QueueSettingsTableAnnotationComposer
     column: $table.currentBatchId,
     builder: (column) => column,
   );
-
-  GeneratedColumn<bool> get isPaused =>
-      $composableBuilder(column: $table.isPaused, builder: (column) => column);
 }
 
 class $$QueueSettingsTableTableManager
@@ -1212,21 +1141,17 @@ class $$QueueSettingsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<int> currentBatchId = const Value.absent(),
-                Value<bool> isPaused = const Value.absent(),
               }) => QueueSettingsCompanion(
                 id: id,
                 currentBatchId: currentBatchId,
-                isPaused: isPaused,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 Value<int> currentBatchId = const Value.absent(),
-                Value<bool> isPaused = const Value.absent(),
               }) => QueueSettingsCompanion.insert(
                 id: id,
                 currentBatchId: currentBatchId,
-                isPaused: isPaused,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
