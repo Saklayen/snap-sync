@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/designsystem/components/app_button.dart';
+import '../../../core/designsystem/components/app_overlay_icon_button.dart';
 import '../../../core/designsystem/theme/app_colors.dart';
 import '../../../core/ui/effect_listener.dart';
 import '../../../app/locator.dart';
@@ -71,6 +73,7 @@ class _CameraViewState extends State<_CameraView> with WidgetsBindingObserver {
         OpenAppSettingsEffect() => openAppSettings(),
         ShowMessageEffect(:final message) => ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(message))),
+        CloseAppEffect() => SystemNavigator.pop(),
         OpenUploadManagerEffect() => Navigator.of(context).push(
             MaterialPageRoute<void>(
               builder: (_) => const UploadManagerScreen(),
@@ -115,6 +118,12 @@ class _CameraViewState extends State<_CameraView> with WidgetsBindingObserver {
                 onQueuePressed: () => context
                     .read<CameraBloc>()
                     .add(const CameraUploadManagerRequested()),
+                flashIcon: state.flashIcon,
+                canFlash: state.canFlash,
+                onFlashPressed: () =>
+                    context.read<CameraBloc>().add(const CameraFlashToggled()),
+                onClosePressed: () =>
+                    context.read<CameraBloc>().add(const CameraCloseRequested()),
               ),
             CameraStatus.starting => const _Starting(),
             _ => _Unavailable(
@@ -167,6 +176,10 @@ class _CameraSurface extends StatelessWidget {
     required this.onCapturePressed,
     required this.onUploadPressed,
     required this.onQueuePressed,
+    required this.flashIcon,
+    required this.canFlash,
+    required this.onFlashPressed,
+    required this.onClosePressed,
   });
 
   final CameraController controller;
@@ -194,6 +207,10 @@ class _CameraSurface extends StatelessWidget {
   final VoidCallback onCapturePressed;
   final VoidCallback onUploadPressed;
   final VoidCallback onQueuePressed;
+  final IconData flashIcon;
+  final bool canFlash;
+  final VoidCallback onFlashPressed;
+  final VoidCallback onClosePressed;
 
   @override
   Widget build(BuildContext context) {
@@ -216,12 +233,12 @@ class _CameraSurface extends StatelessWidget {
             isVisible: isFocusLocked,
           ),
           SafeArea(
-            child: Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: _QueueButton(onPressed: onQueuePressed),
-              ),
+            child: _TopBar(
+              flashIcon: flashIcon,
+              canFlash: canFlash,
+              onClosePressed: onClosePressed,
+              onFlashPressed: onFlashPressed,
+              onQueuePressed: onQueuePressed,
             ),
           ),
           Align(
@@ -750,25 +767,69 @@ class _UploadBatchButton extends StatelessWidget {
   }
 }
 
-class _QueueButton extends StatelessWidget {
-  const _QueueButton({required this.onPressed});
+class _TopBar extends StatelessWidget {
+  const _TopBar({
+    required this.flashIcon,
+    required this.canFlash,
+    required this.onClosePressed,
+    required this.onFlashPressed,
+    required this.onQueuePressed,
+  });
 
+  final IconData flashIcon;
+  final bool canFlash;
+  final VoidCallback onClosePressed;
+  final VoidCallback onFlashPressed;
+  final VoidCallback onQueuePressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppOverlayIconButton(
+            icon: Icons.close_rounded,
+            onPressed: onClosePressed,
+          ),
+          Row(
+            children: [
+              _FlashButton(
+                icon: flashIcon,
+                isVisible: canFlash,
+                onPressed: onFlashPressed,
+              ),
+              const SizedBox(width: 12),
+              AppOverlayIconButton(
+                icon: Icons.cloud_sync_outlined,
+                onPressed: onQueuePressed,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FlashButton extends StatelessWidget {
+  const _FlashButton({
+    required this.icon,
+    required this.isVisible,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final bool isVisible;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: overlayStrong,
-        ),
-        child: const Icon(Icons.cloud_sync_outlined, size: 22, color: white),
-      ),
-    );
+    if (!isVisible) return const SizedBox.shrink();
+
+    return AppOverlayIconButton(icon: icon, onPressed: onPressed);
   }
 }
 
@@ -782,17 +843,10 @@ class _FlipButton extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isVisible) return const SizedBox.shrink();
 
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: 52,
-        height: 52,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: overlayStrong,
-        ),
-        child: const Icon(Icons.cameraswitch_rounded, size: 24, color: white),
-      ),
+    return AppOverlayIconButton(
+      icon: Icons.cameraswitch_rounded,
+      onPressed: onPressed,
+      size: 52,
     );
   }
 }

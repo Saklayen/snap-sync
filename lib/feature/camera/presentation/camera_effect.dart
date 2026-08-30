@@ -15,3 +15,7 @@ final class ShowMessageEffect extends CameraEffect {
 final class OpenUploadManagerEffect extends CameraEffect {
   const OpenUploadManagerEffect();
 }
+
+final class CloseAppEffect extends CameraEffect {
+  const CloseAppEffect();
+}

@@ -22,6 +22,7 @@ class CameraDataSource {
   CameraDescription? _frontCamera;
   int _activeLensIndex = 0;
   bool _isFrontLens = false;
+  FlashMode _flashMode = FlashMode.off;
 
   Future<Result<CameraSession>> start({bool requestPermission = true}) {
     return _pending ??= _start(requestPermission: requestPermission)
@@ -76,6 +77,7 @@ class CameraDataSource {
     final CameraSession session;
     try {
       await controller.initialize();
+      await _applyFlash(controller);
       session = CameraSession(
         controller: controller,
         minZoom: await controller.getMinZoomLevel(),
@@ -84,6 +86,7 @@ class CameraDataSource {
         activeLensIndex: _activeLensIndex,
         canFlip: _frontCamera != null,
         isFrontLens: _isFrontLens,
+        flashMode: _flashMode,
       );
     } on CameraException {
       await controller.dispose();
@@ -120,6 +123,19 @@ class CameraDataSource {
       await _controller?.setFocusPoint(point);
       await _controller?.setExposurePoint(point);
       await _controller?.setFocusMode(FocusMode.locked);
+    } on CameraException {
+      return;
+    }
+  }
+
+  Future<void> setFlash(FlashMode mode) async {
+    _flashMode = mode;
+    await _applyFlash(_controller);
+  }
+
+  Future<void> _applyFlash(CameraController? controller) async {
+    try {
+      await controller?.setFlashMode(_flashMode);
     } on CameraException {
       return;
     }

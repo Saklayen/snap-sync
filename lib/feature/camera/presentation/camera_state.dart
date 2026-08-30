@@ -1,6 +1,5 @@
-import 'dart:ui';
-
 import 'package:camera/camera.dart';
+import 'package:flutter/material.dart';
 import 'package:equatable/equatable.dart';
 
 enum CameraStatus { starting, ready, unavailable }
@@ -52,6 +51,9 @@ class CameraState extends Equatable {
     this.zoomOptions = const [],
     this.lensOptions = const [],
     this.canFlip = false,
+    this.flashMode = FlashMode.off,
+    this.flashIcon = Icons.flash_off_rounded,
+    this.canFlash = false,
     this.focusPoint = Offset.zero,
     this.isFocusLocked = false,
     this.capturePaths = const [],
@@ -73,6 +75,9 @@ class CameraState extends Equatable {
   final List<ZoomOption> zoomOptions;
   final List<LensOption> lensOptions;
   final bool canFlip;
+  final FlashMode flashMode;
+  final IconData flashIcon;
+  final bool canFlash;
   final Offset focusPoint;
   final bool isFocusLocked;
   final List<String> capturePaths;
@@ -108,6 +113,9 @@ class CameraState extends Equatable {
     List<ZoomOption>? zoomOptions,
     List<LensOption>? lensOptions,
     bool? canFlip,
+    FlashMode? flashMode,
+    IconData? flashIcon,
+    bool? canFlash,
     Offset? focusPoint,
     bool? isFocusLocked,
     List<String>? capturePaths,
@@ -129,6 +137,9 @@ class CameraState extends Equatable {
       zoomOptions: zoomOptions ?? this.zoomOptions,
       lensOptions: lensOptions ?? this.lensOptions,
       canFlip: canFlip ?? this.canFlip,
+      flashMode: flashMode ?? this.flashMode,
+      flashIcon: flashIcon ?? this.flashIcon,
+      canFlash: canFlash ?? this.canFlash,
       focusPoint: focusPoint ?? this.focusPoint,
       isFocusLocked: isFocusLocked ?? this.isFocusLocked,
       capturePaths: capturePaths ?? this.capturePaths,
@@ -153,6 +164,9 @@ class CameraState extends Equatable {
         zoomOptions,
         lensOptions,
         canFlip,
+        flashMode,
+        flashIcon,
+        canFlash,
         focusPoint,
         isFocusLocked,
         capturePaths,

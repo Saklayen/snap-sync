@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:camera/camera.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/domain/app_error.dart';
@@ -32,6 +34,8 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
     on<CameraFlipped>(_onFlipped);
     on<CameraBatchSubmitted>(_onBatchSubmitted);
     on<CameraUploadManagerRequested>(_onUploadManagerRequested);
+    on<CameraFlashToggled>(_onFlashToggled);
+    on<CameraCloseRequested>(_onCloseRequested);
 
     _batchSubscription = _queue.watchCurrentBatch().listen(
           (items) => add(CameraBatchChanged([for (final item in items) item.filePath])),
@@ -136,6 +140,21 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
     ));
   }
 
+  Future<void> _onFlashToggled(
+    CameraFlashToggled event,
+    Emitter<CameraState> emit,
+  ) async {
+    final next = _nextFlashFor(state.flashMode);
+
+    emit(state.copyWith(flashMode: next, flashIcon: _flashIconFor(next)));
+
+    await _dataSource.setFlash(next);
+  }
+
+  void _onCloseRequested(CameraCloseRequested event, Emitter<CameraState> emit) {
+    emitEffect(const CloseAppEffect());
+  }
+
   void _onUploadManagerRequested(
     CameraUploadManagerRequested event,
     Emitter<CameraState> emit,
@@ -183,6 +202,9 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
         session.isFrontLens,
       ),
       canFlip: session.canFlip,
+      flashMode: session.flashMode,
+      flashIcon: _flashIconFor(session.flashMode),
+      canFlash: !session.isFrontLens,
       minZoomLabel: _stopLabelFor(session.minZoom),
       maxZoomLabel: _stopLabelFor(session.maxZoom),
       zoomOptions: _zoomOptionsFor(zoom, session.minZoom, session.maxZoom),
@@ -234,6 +256,18 @@ List<LensOption> _lensOptionsFor(int lensCount, int activeIndex, bool isFrontLen
 String _stopLabelFor(double stop) => stop == stop.roundToDouble()
     ? '${stop.toInt()}x'
     : '${stop.toStringAsFixed(1)}x';
+
+FlashMode _nextFlashFor(FlashMode mode) => switch (mode) {
+      FlashMode.off => FlashMode.auto,
+      FlashMode.auto => FlashMode.always,
+      _ => FlashMode.off,
+    };
+
+IconData _flashIconFor(FlashMode mode) => switch (mode) {
+      FlashMode.auto => Icons.flash_auto_rounded,
+      FlashMode.always => Icons.flash_on_rounded,
+      _ => Icons.flash_off_rounded,
+    };
 
 CameraRecovery _recoveryFor(AppError error) => switch (error) {
       CameraError.permissionDenied => CameraRecovery.retry,

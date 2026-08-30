@@ -9,6 +9,7 @@ class CameraSession {
     required this.activeLensIndex,
     required this.canFlip,
     required this.isFrontLens,
+    required this.flashMode,
   });
 
   final CameraController controller;
@@ -18,4 +19,5 @@ class CameraSession {
   final int activeLensIndex;
   final bool canFlip;
   final bool isFrontLens;
+  final FlashMode flashMode;
 }

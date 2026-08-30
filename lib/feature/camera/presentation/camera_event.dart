@@ -80,3 +80,11 @@ final class CameraBatchSubmitted extends CameraEvent {
 final class CameraUploadManagerRequested extends CameraEvent {
   const CameraUploadManagerRequested();
 }
+
+final class CameraFlashToggled extends CameraEvent {
+  const CameraFlashToggled();
+}
+
+final class CameraCloseRequested extends CameraEvent {
+  const CameraCloseRequested();
+}
