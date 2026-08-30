@@ -13,6 +13,10 @@ const ink200 = Color(0xFFB8BECC);
 
 const white = Color(0xFFFFFFFF);
 
+const overlay = Color(0x73000000);
+const overlayStrong = Color(0x8C000000);
+const onOverlayMuted = Color(0x8CFFFFFF);
+
 const green500 = Color(0xFF22C55E);
 const amber500 = Color(0xFFF59E0B);
 const red500 = Color(0xFFEF4444);

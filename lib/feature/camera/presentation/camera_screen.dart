@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../core/designsystem/theme/app_colors.dart';
 import '../../../core/ui/effect_listener.dart';
 import '../data/camera_data_source.dart';
 import 'camera_bloc.dart';
@@ -68,17 +69,32 @@ class _CameraViewState extends State<_CameraView> with WidgetsBindingObserver {
       child: Scaffold(
         body: BlocBuilder<CameraBloc, CameraState>(
           builder: (context, state) => switch (state.status) {
-            CameraStatus.ready when state.controller != null =>
-              _Preview(controller: state.controller!),
+            CameraStatus.ready when state.controller != null => _CameraSurface(
+                controller: state.controller!,
+                zoom: state.zoom,
+                minZoom: state.minZoom,
+                maxZoom: state.maxZoom,
+                minZoomLabel: state.minZoomLabel,
+                maxZoomLabel: state.maxZoomLabel,
+                zoomOptions: state.zoomOptions,
+                isZoomAdjustable: state.isZoomAdjustable,
+                focusPoint: state.focusPoint,
+                isFocusLocked: state.isFocusLocked,
+                onZoomChanged: (level) =>
+                    context.read<CameraBloc>().add(CameraZoomChanged(level)),
+                onFocusRequested: (point) =>
+                    context.read<CameraBloc>().add(CameraFocusRequested(point)),
+                onFocusReleased: () =>
+                    context.read<CameraBloc>().add(const CameraFocusReleased()),
+              ),
             CameraStatus.starting => const _Starting(),
             _ => _Unavailable(
-                  message: state.message,
-                  actionLabel: state.recoveryLabel,
-                  showAction: state.hasRecovery,
-              onAction: () => context
-                  .read<CameraBloc>()
-                  .add(const CameraRecoveryRequested()),
-            ),
+                message: state.message,
+                actionLabel: state.recoveryLabel,
+                showAction: state.hasRecovery,
+                onAction: () =>
+                    context.read<CameraBloc>().add(const CameraRecoveryRequested()),
+              ),
           },
         ),
       ),
@@ -92,6 +108,181 @@ class _Starting extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(child: CircularProgressIndicator());
+  }
+}
+
+class _CameraSurface extends StatelessWidget {
+  const _CameraSurface({
+    required this.controller,
+    required this.zoom,
+    required this.minZoom,
+    required this.maxZoom,
+    required this.minZoomLabel,
+    required this.maxZoomLabel,
+    required this.zoomOptions,
+    required this.isZoomAdjustable,
+    required this.focusPoint,
+    required this.isFocusLocked,
+    required this.onZoomChanged,
+    required this.onFocusRequested,
+    required this.onFocusReleased,
+  });
+
+  final CameraController controller;
+  final double zoom;
+  final double minZoom;
+  final double maxZoom;
+  final String minZoomLabel;
+  final String maxZoomLabel;
+  final List<ZoomOption> zoomOptions;
+  final bool isZoomAdjustable;
+  final Offset focusPoint;
+  final bool isFocusLocked;
+  final ValueChanged<double> onZoomChanged;
+  final ValueChanged<Offset> onFocusRequested;
+  final VoidCallback onFocusReleased;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => Stack(
+        fit: StackFit.expand,
+        children: [
+          _CameraGestures(
+            zoom: zoom,
+            size: constraints.biggest,
+            onZoomChanged: onZoomChanged,
+            onFocusRequested: onFocusRequested,
+            child: _Preview(controller: controller),
+          ),
+          _FocusIndicator(
+            center: Offset(
+              focusPoint.dx * constraints.maxWidth,
+              focusPoint.dy * constraints.maxHeight,
+            ),
+            isVisible: isFocusLocked,
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: _ZoomSlider(
+                zoom: zoom,
+                minZoom: minZoom,
+                maxZoom: maxZoom,
+                minLabel: minZoomLabel,
+                maxLabel: maxZoomLabel,
+                isVisible: isZoomAdjustable,
+                onChanged: onZoomChanged,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 40,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _FocusLockChip(
+                  isVisible: isFocusLocked,
+                  onPressed: onFocusReleased,
+                ),
+                const SizedBox(height: 20),
+                _ZoomPills(options: zoomOptions, onSelected: onZoomChanged),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CameraGestures extends StatefulWidget {
+  const _CameraGestures({
+    required this.zoom,
+    required this.size,
+    required this.onZoomChanged,
+    required this.onFocusRequested,
+    required this.child,
+  });
+
+  final double zoom;
+  final Size size;
+  final ValueChanged<double> onZoomChanged;
+  final ValueChanged<Offset> onFocusRequested;
+  final Widget child;
+
+  @override
+  State<_CameraGestures> createState() => _CameraGesturesState();
+}
+
+class _CameraGesturesState extends State<_CameraGestures> {
+  double _baseline = 1;
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    if (details.pointerCount < 2) return;
+    widget.onZoomChanged(_baseline * details.scale);
+  }
+
+  void _onTapDown(TapDownDetails details) {
+    widget.onFocusRequested(Offset(
+      details.localPosition.dx / widget.size.width,
+      details.localPosition.dy / widget.size.height,
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: _onTapDown,
+      onScaleStart: (_) => _baseline = widget.zoom,
+      onScaleUpdate: _onScaleUpdate,
+      child: widget.child,
+    );
+  }
+}
+
+class _FocusIndicator extends StatelessWidget {
+  const _FocusIndicator({required this.center, required this.isVisible});
+
+  static const double _size = 76;
+
+  final Offset center;
+  final bool isVisible;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isVisible) return const SizedBox.shrink();
+
+    return Positioned(
+      left: center.dx - _size / 2,
+      top: center.dy - _size / 2,
+      child: TweenAnimationBuilder<double>(
+        key: ValueKey(center),
+        tween: Tween(begin: 1.35, end: 1),
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        builder: (context, scale, child) =>
+            Transform.scale(scale: scale, child: child),
+        child: Container(
+          width: _size,
+          height: _size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: white, width: 1.5),
+          ),
+          child: Center(
+            child: Container(
+              width: 6,
+              height: 6,
+              decoration: const BoxDecoration(shape: BoxShape.circle, color: white),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -109,6 +300,186 @@ class _Preview extends StatelessWidget {
           width: controller.value.previewSize?.height ?? 1,
           height: controller.value.previewSize?.width ?? 1,
           child: CameraPreview(controller),
+        ),
+      ),
+    );
+  }
+}
+
+class _ZoomPills extends StatelessWidget {
+  const _ZoomPills({required this.options, required this.onSelected});
+
+  final List<ZoomOption> options;
+  final ValueChanged<double> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (final option in options)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: _ZoomPill(
+              label: option.label,
+              isSelected: option.isSelected,
+              onPressed: () => onSelected(option.level),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ZoomPill extends StatelessWidget {
+  const _ZoomPill({
+    required this.label,
+    required this.isSelected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        width: 44,
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isSelected ? white : overlayStrong,
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: isSelected ? ink900 : white,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ZoomSlider extends StatelessWidget {
+  const _ZoomSlider({
+    required this.zoom,
+    required this.minZoom,
+    required this.maxZoom,
+    required this.minLabel,
+    required this.maxLabel,
+    required this.isVisible,
+    required this.onChanged,
+  });
+
+  final double zoom;
+  final double minZoom;
+  final double maxZoom;
+  final String minLabel;
+  final String maxLabel;
+  final bool isVisible;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isVisible) return const SizedBox.shrink();
+
+    return Container(
+      width: 44,
+      height: 260,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: overlay,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        children: [
+          _ZoomBound(label: maxLabel),
+          Expanded(
+            child: RotatedBox(
+              quarterTurns: 3,
+              child: SliderTheme(
+                data: SliderThemeData(
+                  trackHeight: 2,
+                  activeTrackColor: white,
+                  inactiveTrackColor: onOverlayMuted,
+                  thumbColor: white,
+                  overlayColor: Colors.transparent,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+                ),
+                child: Slider(
+                  value: zoom.clamp(minZoom, maxZoom),
+                  min: minZoom,
+                  max: maxZoom,
+                  onChanged: onChanged,
+                ),
+              ),
+            ),
+          ),
+          _ZoomBound(label: minLabel),
+        ],
+      ),
+    );
+  }
+}
+
+class _ZoomBound extends StatelessWidget {
+  const _ZoomBound({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: Theme.of(context)
+          .textTheme
+          .labelSmall
+          ?.copyWith(color: onOverlayMuted),
+    );
+  }
+}
+
+class _FocusLockChip extends StatelessWidget {
+  const _FocusLockChip({required this.isVisible, required this.onPressed});
+
+  final bool isVisible;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isVisible) return const SizedBox.shrink();
+
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: overlayStrong,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: amber500),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'AF LOCK',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: amber500,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.close_rounded, size: 14, color: amber500),
+          ],
         ),
       ),
     );

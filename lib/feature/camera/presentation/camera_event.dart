@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:equatable/equatable.dart';
 
 sealed class CameraEvent extends Equatable {
@@ -21,4 +23,26 @@ final class CameraStopped extends CameraEvent {
 
 final class CameraRecoveryRequested extends CameraEvent {
   const CameraRecoveryRequested();
+}
+
+final class CameraZoomChanged extends CameraEvent {
+  const CameraZoomChanged(this.level);
+
+  final double level;
+
+  @override
+  List<Object?> get props => [level];
+}
+
+final class CameraFocusRequested extends CameraEvent {
+  const CameraFocusRequested(this.point);
+
+  final Offset point;
+
+  @override
+  List<Object?> get props => [point];
+}
+
+final class CameraFocusReleased extends CameraEvent {
+  const CameraFocusReleased();
 }

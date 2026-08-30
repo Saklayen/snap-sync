@@ -5,9 +5,12 @@ import '../../../core/domain/result.dart';
 import '../../../core/ui/effect_emitter.dart';
 import '../../../core/ui/error_to_text.dart';
 import '../data/camera_data_source.dart';
+import '../data/camera_session.dart';
 import 'camera_effect.dart';
 import 'camera_event.dart';
 import 'camera_state.dart';
+
+const _zoomStops = [0.5, 1.0, 2.0, 5.0];
 
 class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<CameraEffect> {
   CameraBloc(this._dataSource) : super(const CameraState()) {
@@ -15,42 +18,20 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
     on<CameraResumed>(_onResumed);
     on<CameraStopped>(_onStopped);
     on<CameraRecoveryRequested>(_onRecoveryRequested);
+    on<CameraZoomChanged>(_onZoomChanged);
+    on<CameraFocusRequested>(_onFocusRequested);
+    on<CameraFocusReleased>(_onFocusReleased);
   }
 
   final CameraDataSource _dataSource;
 
   Future<void> _onStarted(CameraStarted event, Emitter<CameraState> emit) async {
     emit(const CameraState(status: CameraStatus.starting));
-
-    final result = await _dataSource.start();
-
-    emit(switch (result) {
-      Success(:final data) => const CameraState(status: CameraStatus.ready).copyWith(
-          controller: data,
-        ),
-      Failure(:final error) => CameraState(
-          status: CameraStatus.unavailable,
-          message: messageFor(error),
-          recovery: _recoveryFor(error),
-          recoveryLabel: _recoveryLabelFor(error),
-        ),
-    });
+    emit(_stateFor(await _dataSource.start()));
   }
 
   Future<void> _onResumed(CameraResumed event, Emitter<CameraState> emit) async {
-    final result = await _dataSource.start(requestPermission: false);
-
-    emit(switch (result) {
-      Success(:final data) => const CameraState(status: CameraStatus.ready).copyWith(
-          controller: data,
-        ),
-      Failure(:final error) => CameraState(
-          status: CameraStatus.unavailable,
-          message: messageFor(error),
-          recovery: _recoveryFor(error),
-          recoveryLabel: _recoveryLabelFor(error),
-        ),
-    });
+    emit(_stateFor(await _dataSource.start(requestPermission: false)));
   }
 
   Future<void> _onStopped(CameraStopped event, Emitter<CameraState> emit) async {
@@ -69,6 +50,60 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
     add(const CameraStarted());
   }
 
+  Future<void> _onZoomChanged(CameraZoomChanged event, Emitter<CameraState> emit) async {
+    final level = event.level.clamp(state.minZoom, state.maxZoom);
+
+    emit(state.copyWith(
+      zoom: level,
+      zoomOptions: _zoomOptionsFor(level, state.minZoom, state.maxZoom),
+    ));
+
+    await _dataSource.setZoom(level);
+  }
+
+  Future<void> _onFocusRequested(
+    CameraFocusRequested event,
+    Emitter<CameraState> emit,
+  ) async {
+    emit(state.copyWith(focusPoint: event.point, isFocusLocked: true));
+
+    await _dataSource.focusAt(event.point);
+  }
+
+  Future<void> _onFocusReleased(
+    CameraFocusReleased event,
+    Emitter<CameraState> emit,
+  ) async {
+    emit(state.copyWith(isFocusLocked: false));
+
+    await _dataSource.releaseFocus();
+  }
+
+  CameraState _stateFor(Result<CameraSession> result) => switch (result) {
+        Success(:final data) => _readyState(data),
+        Failure(:final error) => CameraState(
+            status: CameraStatus.unavailable,
+            message: messageFor(error),
+            recovery: _recoveryFor(error),
+            recoveryLabel: _recoveryLabelFor(error),
+          ),
+      };
+
+  CameraState _readyState(CameraSession session) {
+    final zoom = 1.0.clamp(session.minZoom, session.maxZoom);
+
+    return CameraState(
+      status: CameraStatus.ready,
+      controller: session.controller,
+      zoom: zoom,
+      minZoom: session.minZoom,
+      maxZoom: session.maxZoom,
+      minZoomLabel: _stopLabelFor(session.minZoom),
+      maxZoomLabel: _stopLabelFor(session.maxZoom),
+      zoomOptions: _zoomOptionsFor(zoom, session.minZoom, session.maxZoom),
+    );
+  }
+
   @override
   Future<void> close() async {
     await _dataSource.stop();
@@ -76,6 +111,25 @@ class CameraBloc extends Bloc<CameraEvent, CameraState> with EffectEmitter<Camer
     return super.close();
   }
 }
+
+List<ZoomOption> _zoomOptionsFor(double zoom, double minZoom, double maxZoom) {
+  final stops = _zoomStops.where((s) => s >= minZoom && s <= maxZoom).toList();
+  if (stops.length < 2) return const [];
+
+  final selected = stops.lastWhere((s) => s <= zoom, orElse: () => stops.first);
+
+  return [
+    for (final stop in stops)
+      ZoomOption(
+        label: _stopLabelFor(stop),
+        level: stop,
+        isSelected: stop == selected,
+      ),
+  ];
+}
+
+String _stopLabelFor(double stop) =>
+    stop == stop.roundToDouble() ? '${stop.toInt()}x' : '${stop}x';
 
 CameraRecovery _recoveryFor(AppError error) => switch (error) {
       CameraError.permissionDenied => CameraRecovery.retry,
